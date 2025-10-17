@@ -101,13 +101,9 @@ GROUP BY c.CustomerId;
 CREATE INDEX IF NOT EXISTS "idx_track_name" ON "Track"("Name");
 -- 15) Với từng khách, tính Recency (ngày hiện tại – ngày mua gần nhất), Frequency (số hoá đơn), Monetary (tổng chi tiêu)
 SELECT c.CustomerId, c.FirstName || ' ' || c.LastName AS FullName,
-       CASE
-         WHEN MAX(i.InvoiceDate) IS NULL THEN NULL
-         ELSE CAST(julianday('now') - julianday(MAX(i.InvoiceDate)) AS INTEGER)
-       END AS RecencyDays,
+        CAST(julianday('now') - julianday(MAX(i.InvoiceDate)) AS INTEGER) AS RecencyDays,
        COUNT(i.InvoiceId) AS Frequency,
-       ROUND(COALESCE(SUM(i.Total),0),2) AS Monetary
+       ROUND(SUM(i.Total), 2) as Monetary
 FROM Customer c
-LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId
-GROUP BY c.CustomerId
-ORDER BY RecencyDays, Frequency DESC;
+JOIN Invoice i ON c.CustomerId = i.CustomerId
+GROUP BY c.CustomerId;
