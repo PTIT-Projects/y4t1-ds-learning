@@ -201,6 +201,8 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+**/mongodb_data/**
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
