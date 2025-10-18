@@ -79,3 +79,67 @@ db.Products.find(
         "category": "Audio"
     }
 );
+// 2, Lấy ra tên, hãng của các điện thoại của hãng Apple
+db.Products.find(
+    {
+        "brand": "Apple",
+        "category": "Phone"
+    },
+    {
+        "_id": 0,
+        "name": 1,
+        "brand": 1,
+    }
+);
+
+
+// 3) Tên, hãng, số lượng (stock) của sản phẩm là điện thoại hoặc đồng hồ của Xiaomi
+// (giả sử category có thể là "Phone" hoặc "Watch")
+db.Products.find(
+  { brand: "Xiaomi", category: { $in: ["Phone", "Watch"] } },
+  { _id: 0, name: 1, brand: 1, stock: 1 }
+);
+
+// 4) Tên, hãng, giá của sản phẩm Apple có giá > 200
+db.Products.find(
+  { brand: "Apple", price: { $gt: 200 } },
+  { _id: 0, name: 1, brand: 1, price: 1 }
+);
+
+// 5) Sản phẩm Xiaomi có stock <= 10
+db.Products.find(
+  { brand: "Xiaomi", stock: { $lte: 10 } }
+);
+
+// 6) Thông tin khách hàng có địa chỉ ở Hà Nội
+db.Customers.find(
+  { "address.city": "Hanoi" }
+);
+
+// 7) Doanh thu theo trạng thái đơn hàng (tổng total và số đơn)
+db.Orders.aggregate([
+  { $group: { _id: "$status", totalRevenue: { $sum: "$total" }, orders: { $sum: 1 } } },
+  { $project: { status: "$_id", totalRevenue: 1, orders: 1, _id: 0 } }
+]);
+
+// 8) Đếm số đơn hàng và tổng chi tiêu theo khách hàng (bao gồm mọi trạng thái), sắp theo tổng chi tiêu giảm dần
+db.Orders.aggregate([
+  { $group: { _id: "$userId", ordersCount: { $sum: 1 }, totalSpent: { $sum: "$total" } } },
+  { $lookup: { from: "Customers", localField: "_id", foreignField: "_id", as: "customer" } },
+  { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+  { $project: { userId: "$_id", ordersCount: 1, totalSpent: 1, customer: { firstName: "$customer.firstName", lastName: "$customer.lastName", email: "$customer.email" }, _id: 0 } },
+  { $sort: { totalSpent: -1 } }
+]);
+
+// 9) Doanh thu theo quốc gia khách hàng (tổng tất cả trạng thái)
+db.Orders.aggregate([
+  { $lookup: { from: "Customers", localField: "userId", foreignField: "_id", as: "cust" } },
+  { $unwind: "$cust" },
+  { $group: { _id: "$cust.country", totalRevenue: { $sum: "$total" }, orders: { $sum: 1 } } },
+  { $project: { country: "$_id", totalRevenue: 1, orders: 1, _id: 0 } }
+]);
+
+// 10) Tìm các đơn không phải "canceled", sắp theo total giảm dần
+db.Orders.find(
+  { status: { $ne: "canceled" } }
+).sort({ total: -1 });
