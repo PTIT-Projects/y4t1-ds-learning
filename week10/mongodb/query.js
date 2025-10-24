@@ -124,12 +124,22 @@ db.Orders.aggregate([
 
 // 8) Đếm số đơn hàng và tổng chi tiêu theo khách hàng (bao gồm mọi trạng thái), sắp theo tổng chi tiêu giảm dần
 db.Orders.aggregate([
-  { $group: { _id: "$userId", ordersCount: { $sum: 1 }, totalSpent: { $sum: "$total" } } },
-  { $lookup: { from: "Customers", localField: "_id", foreignField: "_id", as: "customer" } },
-  { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
-  { $project: { userId: "$_id", ordersCount: 1, totalSpent: 1, customer: { firstName: "$customer.firstName", lastName: "$customer.lastName", email: "$customer.email" }, _id: 0 } },
-  { $sort: { totalSpent: -1 } }
-]);
+    {
+        $group: {
+            _id: "$userId",
+            totalOrders: {
+                $count: {}
+            },
+            totalSpend: {
+                $sum: "$total"
+            }
+        }
+    }, {
+        $sort: {
+            totalSpend: -1
+        }
+    }
+])
 
 // 9) Doanh thu theo quốc gia khách hàng (tổng tất cả trạng thái)
 db.Orders.aggregate([
@@ -138,8 +148,50 @@ db.Orders.aggregate([
   { $group: { _id: "$cust.country", totalRevenue: { $sum: "$total" }, orders: { $sum: 1 } } },
   { $project: { country: "$_id", totalRevenue: 1, orders: 1, _id: 0 } }
 ]);
+db.Orders.aggregate(
+    {
+        $lookup: {
+            from: "Customers",
+            localField: "userId",
+            foreignField: "_id",
+            as: "customer"
+        }
+    },
+    {
+        $unwind: "$customer"
+    },
+    {
+        $group: {
+            _id: "$customer.country",
+            totalRevenue: {
+                $sum: "$total"
+            }
+        }
+    },
+    {
+        $project: {
+            country: "$_id",
+            totalRevenue: 1,
+            _id: 0
+        }
+    }
+);
 
 // 10) Tìm các đơn không phải "canceled", sắp theo total giảm dần
 db.Orders.find(
   { status: { $ne: "canceled" } }
 ).sort({ total: -1 });
+db.Orders.aggregate(
+    {
+        $match: {
+            status: {
+                $ne: 'canceled'
+            }
+        }
+    },
+    {
+        $sort: {
+            total: -1
+        }
+    }
+);
